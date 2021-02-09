@@ -26,12 +26,14 @@ object Poker extends App {
    * Implement hand1WinsOverHand2 method and return whether or not the first hand wins over the second hand.
    */
 
-  val cardSuits = Seq("C","D","S","H")
-  val cardValues = Seq("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+  // ordering suits / cards by highest value
+  val cardSuits = Seq("C","D","H","S")
+  val cardValues = Seq("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
 
   case class Card(
-    value: String,
-    suit: String
+    face: String,
+    suit: String,
+    value: Double
   )
 
   case class Hand(
@@ -45,10 +47,18 @@ object Poker extends App {
     }
 
     if (!cardValues.contains(card.dropRight(1))){
-      throw new RuntimeException("card must a valid value (1-10, J, Q, K, A) No jokers. ")
+      throw new RuntimeException("card must a valid value (2-10, J, Q, K, A) No jokers. ")
     }
 
-    Card(value = card.dropRight(1) , suit = card.takeRight(1)) 
+    val cardSuit = card.takeRight(1)
+    val cardFace = card.dropRight(1)
+
+  // set the cards value based on it's face + suit
+    Card(
+      face = cardFace, 
+      suit = cardSuit,
+      value = (cardValues.indexOf(cardFace) + 1) + ((cardSuits.indexOf(cardSuit) + 1) * 0.1)
+    ) 
   }
  
 
@@ -63,6 +73,35 @@ object Poker extends App {
     )
   }
 
+  //   *   Straight flush ex: (1C, 2C, 3C, 4C, 5C)
+  //  *   Four of a kind ex: (1D, 1C, 1S, 1H, X)
+  //  *   Full house ex: (1D, 1C, 1S, 2D, 2H)
+  //  *   Flush  ex: (1D, 3D, KD, AD, 10D)
+  //  *   Straight ex: (1C, 2D, 3H, 4C, 5S)
+  //  *   Three of a kind ex: (1D, 1C, 1S, AD, 10D)
+  //  *   Two pair ex: (1D, 1C, AC, AD, 10D)
+  //  *   One pair ex: (1D, 1C, KD, AD, 10D)
+
+  def isStraigh(cards: Seq[Card]): Boolean = {
+    val cardFaces = cards.map(card => cardValues.indexOf(card.face))
+    val cardSet = cardFaces.toSet
+    // There is one case where the straight (baby straight) can be ace, 2, 3, 4, 5
+    cardSet.size == 5 && (cardSet.foldLeft(true)((l,r) => (r - l) == 1) || cardSet == Set(12, 0, 1, 2, 3))
+  } 
+
+  def isFlush(cards: Seq[Card]): Boolean = cards.map(_.face).toSet.size == 1
+
+  def handValue(hand: Hand): Double = {
+    if(isStraigh(hand.cards) && isFlush(hand.cards)) 500
+    // if(isStraigh(hand) && isFlush(hand)) 500
+
+
+    // if no matched hand in play, return high card value
+    hand.cards.reduceLeft(
+      (c1: Card, c2: Card) => if(c1.value > c2.value) c1 else c2
+    ).value
+  }
+
 
   /*
   * First, parse the hand into a useable data structure.
@@ -73,7 +112,9 @@ object Poker extends App {
     val hand1: Hand = parseHand(hand1Str)
     val hand2: Hand = parseHand(hand1Str)
 
-    hand1.value > hand2.value
+    print(handValue(hand1))
+
+    handValue(hand1) > handValue(hand2)
   }
 
   implicit class CompareTwoPokerHands(hand1: String) {
