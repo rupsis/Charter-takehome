@@ -93,13 +93,18 @@ object Poker extends App {
   "8C,8H,10S,KH,KS" winsOver "2S,2D,JH,7S,AC" // two pair
   "AC,AH,3C,QH,10C" winsOver "3S,2D,KH,JS,AD" // one pair
 
-  try{
-    "17C,AH,3C,QH,10C" winsOver "3S,2D,KH,JS,AD" // invalid card hand
-  } catch{ case e: RuntimeException => println(s"invalid hand: $e") }
+  Seq(
+    ("17C,AH,3C,QH,10C", "3S,2D,KH,JS,AD"), // bad card value
+    ("17C,AH,3C,QH", "3S,2D,KH,JS,AD"),   // bad hand length 
+    ("10C,AH,3C,QH,2Z", "3S,2D,KH,JS,AD") // bad vard suit
+  ).map(x => {
+    try{
+     x._1 winsOver x._2
+    } catch {  
+      case e: RuntimeException => println(s"invalid hand: $e") 
+    }
+  });
 
-  try{  
-    "17C,AH,3C,QH" winsOver "3S,2D,KH,JS,AD" // invalid length hand 
-  } catch {  case e: RuntimeException => println(s"invalid hand: $e") }
   
   System.exit(0)
 }
