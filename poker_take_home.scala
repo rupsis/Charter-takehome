@@ -30,6 +30,10 @@ object Poker extends App {
   val cardSuits = Seq("C","D","H","S")
   val cardValues = Seq("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
 
+  /*
+  *  Card / Hand classes
+  */
+
   case class Card(
     face: String,
     suit: String,
@@ -40,6 +44,10 @@ object Poker extends App {
     cards: Seq[Card],
     value: Double
   )
+
+  /*
+  *  Card / Hand parsing method
+  */
 
   def parseCard(card: String): Card = {
     if (!cardSuits.contains(card.takeRight(1))){
@@ -55,12 +63,12 @@ object Poker extends App {
 
   // set the cards value based on it's face + suit
     Card(
-      face = cardFace, 
+      face = cardFace,
       suit = cardSuit,
       value = (cardValues.indexOf(cardFace) + 1) + ((cardSuits.indexOf(cardSuit) + 1) * 0.1)
-    ) 
+    )
   }
- 
+
 
   def parseHand(hand: String): Hand = {
    val cards = hand.split(",")
@@ -73,28 +81,45 @@ object Poker extends App {
     )
   }
 
-  //   *   Straight flush ex: (1C, 2C, 3C, 4C, 5C)
-  //  *   Four of a kind ex: (1D, 1C, 1S, 1H, X)
-  //  *   Full house ex: (1D, 1C, 1S, 2D, 2H)
-  //  *   Flush  ex: (1D, 3D, KD, AD, 10D)
-  //  *   Straight ex: (1C, 2D, 3H, 4C, 5S)
-  //  *   Three of a kind ex: (1D, 1C, 1S, AD, 10D)
-  //  *   Two pair ex: (1D, 1C, AC, AD, 10D)
-  //  *   One pair ex: (1D, 1C, KD, AD, 10D)
+  /*
+  *  Hand evaluation methods. 3 baisc types, Straigh, Flush, and some pair (triple, 2 pair, etc)
+  */
 
   def isStraigh(cards: Seq[Card]): Boolean = {
     val cardFaces = cards.map(card => cardValues.indexOf(card.face))
     val cardSet = cardFaces.toSet
     // There is one case where the straight (baby straight) can be ace, 2, 3, 4, 5
-    cardSet.size == 5 && (cardSet.foldLeft(true)((l,r) => (r - l) == 1) || cardSet == Set(12, 0, 1, 2, 3))
-  } 
+    cardSet.size == 5 && ((cardSet, cardSet.drop(1)).zipped.forall ((l,r) => (r-l) == 1) || cardSet == Set(12, 0, 1, 2, 3))
+  }
 
-  def isFlush(cards: Seq[Card]): Boolean = cards.map(_.face).toSet.size == 1
+  def isFlush(cards: Seq[Card]): Boolean = cards.map(_.suit).toSet.size == 1
 
+  def isMultipleKind(cards: Seq[Card], groupSize: Long, occurances: Long = 1) = {
+    cards.groupBy(_.face).values.count(_.size == groupSize) == occurances
+  }
+
+
+//   Really not a huge fan of this pattern... But it works
   def handValue(hand: Hand): Double = {
-    if(isStraigh(hand.cards) && isFlush(hand.cards)) 500
-    // if(isStraigh(hand) && isFlush(hand)) 500
 
+    if(isStraigh(hand.cards) && isFlush(hand.cards)) return 1000
+
+    if(isMultipleKind(hand.cards, 4, 1)) return 900
+
+    if(
+      isMultipleKind(hand.cards, 3, 1) &&
+      isMultipleKind(hand.cards, 2, 1)
+    ) return 800
+
+    if(isFlush(hand.cards)) return 700
+
+    if(isStraigh(hand.cards)) return 600
+
+    if(isMultipleKind(hand.cards, 3, 1)) return 500
+
+    if(isMultipleKind(hand.cards, 2, 2)) return 400
+
+    if(isMultipleKind(hand.cards, 2, 1)) return 300
 
     // if no matched hand in play, return high card value
     hand.cards.reduceLeft(
@@ -110,10 +135,15 @@ object Poker extends App {
   */
   def hand1WinsOverHand2(hand1Str: String, hand2Str: String): Boolean = {
     val hand1: Hand = parseHand(hand1Str)
-    val hand2: Hand = parseHand(hand1Str)
+    val hand2: Hand = parseHand(hand2Str)
 
-    print(handValue(hand1))
-
+//   ensure hands are unique
+    println()
+    if(!(hand1.cards ++ hand2.cards).groupBy(
+      card => (card.face, card.suit)).values.forall(_.size == 1)
+    ){
+      throw new RuntimeException("Invalid hand, contains duplicate cards")
+    }
     handValue(hand1) > handValue(hand2)
   }
 
@@ -133,19 +163,21 @@ object Poker extends App {
   "7C,7D,7S,3H,4D" winsOver "9S,6S,10D,AS,AD" // three of a kind
   "8C,8H,10S,KH,KS" winsOver "2S,2D,JH,7S,AC" // two pair
   "AC,AH,3C,QH,10C" winsOver "3S,2D,KH,JS,AD" // one pair
+  "AC,2H,3C,QH,10C" winsOver "3S,2D,KH,JS,5D" // high card
 
   Seq(
     ("17C,AH,3C,QH,10C", "3S,2D,KH,JS,AD"), // bad card value
-    ("17C,AH,3C,QH", "3S,2D,KH,JS,AD"),   // bad hand length 
-    ("10C,AH,3C,QH,2Z", "3S,2D,KH,JS,AD") // bad vard suit
+    ("17C,AH,3C,QH", "3S,2D,KH,JS,AD"),   // bad hand length
+    ("10C,AH,3C,QH,2Z", "3S,2D,KH,JS,AD"), // bad vard suit
+    ("AC,AH,3C,QH,10C", "AC,2D,KH,JS,AD") // duplicate cards
   ).map(x => {
     try{
      x._1 winsOver x._2
-    } catch {  
-      case e: RuntimeException => println(s"invalid hand: $e") 
+    } catch {
+      case e: RuntimeException => println(s"invalid hand: $e")
     }
   });
 
-  
+
   System.exit(0)
 }
