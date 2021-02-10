@@ -168,7 +168,7 @@ object Poker extends App {
   Seq(
     ("17C,AH,3C,QH,10C", "3S,2D,KH,JS,AD"), // bad card value
     ("17C,AH,3C,QH", "3S,2D,KH,JS,AD"),   // bad hand length
-    ("10C,AH,3C,QH,2Z", "3S,2D,KH,JS,AD"), // bad vard suit
+    ("10C,AH,3C,QH,2Z", "3S,2D,KH,JS,AD"), // bad card suit
     ("AC,AH,3C,QH,10C", "AC,2D,KH,JS,AD") // duplicate cards
   ).map(x => {
     try{
